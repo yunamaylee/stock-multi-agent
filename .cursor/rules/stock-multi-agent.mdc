@@ -1,0 +1,41 @@
+---
+description: stock-multi-agent FastAPI layers, errors, agents — follow CONVENTIONS.md
+globs: app/**/*.py
+alwaysApply: false
+---
+
+# stock-multi-agent — Python / FastAPI
+
+상세 규약은 루트 **`CONVENTIONS.md`**와 **`README.md`**를 따른다.
+
+## 레이어
+
+- **`app/router/`** — HTTP만. 비즈니스 조합·RAG·레포 직접 호출 금지. `service`만 호출.
+- **`app/service/`** — 유스케이스: `graph`, `agents`, `repository`, `rag` 조합.
+- **`app/repository/`** — 외부 I/O 한 동작 단위. 실패 시 `create_repo_error(...)`.
+- **`app/graph/`** — LangGraph 파이프라인.
+- **`app/agents/`** — 단일 에이전트 단계. 실패 시 `wrap_app_error(..., source="agent", code="...")`.
+- **`app/rag/`** — 임베딩·리트리버 등. `wrap_app_error(..., source="rag", ...)`.
+
+## 에러
+
+- 레포: `raise create_repo_error("REPO/...", cause=error)`.
+- 그 외: `wrap_app_error(error, source="service"|"agent"|"graph"|"rag", code="...")`.
+- 새 `code` 추가 시 **`app/errors/error_messages.py`**에 표시 문구 추가.
+- API 응답 형식은 핸들러 정의대로 `{"error": {"source","code","message"}}`.
+
+## import
+
+1. 표준 라이브러리  
+2. 서드파티  
+3. `app.*` — 패키지 이름 **알파벳 순** (`app.agents`, `app.errors`, …).
+
+## 에이전트 / 그래프
+
+- 새 분석 단계는 **`trading_graph.py`**와 상태 `TypedDict`와 함께 고려.
+- 프롬프트·역할 분리 유지. RAG는 애널리스트·리스크 등 설계상 단계에만 (트레이더는 브리핑만 받는 현재 구조 유지).
+
+## 기타
+
+- 조건 분기는 **early return** 선호.
+- 불필요한 리팩터·무관 파일 변경 금지.

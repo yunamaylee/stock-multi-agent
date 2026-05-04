@@ -24,3 +24,5 @@ out/
 
 # Logs
 *.log
+
+data/chroma_db/
