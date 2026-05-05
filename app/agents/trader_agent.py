@@ -92,14 +92,23 @@ def _parse_response(content: str) -> dict:
     confidence = "50"
     entry_condition = "미정"
 
-    for line in content.split("\n"):
-        line = line.strip()
-        if line.lower().startswith("trade_decision:"):
-            trade_decision = line.split(":", 1)[1].strip()
-        elif line.lower().startswith("confidence:"):
-            confidence = line.split(":", 1)[1].strip()
-        elif line.lower().startswith("entry_condition:"):
-            entry_condition = line.split(":", 1)[1].strip()
+    for line in reversed(content.split("\n")):
+        stripped = line.strip().strip("*").strip()
+        lower = stripped.lower()
+
+        if trade_decision == "중립" and lower.startswith("trade_decision:"):
+            value = stripped.split(":", 1)[-1].strip()
+            if value in ("진입", "중립", "패스"):
+                trade_decision = value
+
+        elif confidence == "50" and lower.startswith("confidence:"):
+            confidence = stripped.split(":", 1)[-1].strip()
+
+        elif entry_condition == "미정" and lower.startswith("entry_condition:"):
+            entry_condition = stripped.split(":", 1)[-1].strip()
+
+        if trade_decision != "중립" and confidence != "50" and entry_condition != "미정":
+            break
 
     return {
         "opinion": trade_decision,

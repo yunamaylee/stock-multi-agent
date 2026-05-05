@@ -89,7 +89,7 @@ async def analyze(ticker: str, target_date: date, session: str = "regular") -> d
             ]
         )
 
-        return _parse_response(response.content)
+        return _parse_response(response.content, data_results=data_results)
     except Exception as error:
         wrap_app_error(
             error,
@@ -140,9 +140,39 @@ session: {session}
 """
 
 
-def _parse_response(content: str) -> dict:
+def _parse_response(content: str, data_results: dict = None) -> dict:
     opinion = "중립"
     for line in content.split("\n"):
         if line.startswith("opinion:"):
             opinion = line.replace("opinion:", "").strip()
-    return {"opinion": opinion, "reason": content}
+
+    # raw 가격 데이터 추출
+    price_data = {}
+    if data_results:
+        for endpoint, data in data_results.items():
+            if isinstance(data, list) and len(data) > 0:
+                first = data[0]
+                if isinstance(first, dict):
+                    price_data = {
+                        "close": first.get("close") or first.get("price"),
+                        "open": first.get("open"),
+                        "high": first.get("high"),
+                        "low": first.get("low"),
+                        "vwap": first.get("vwap"),
+                        "volume": first.get("volume"),
+                        "change_percent": first.get("changePercent") or first.get("change_percent"),
+                    }
+                    break
+            elif isinstance(data, dict):
+                price_data = {
+                    "close": data.get("close") or data.get("price"),
+                    "open": data.get("open"),
+                    "high": data.get("high"),
+                    "low": data.get("low"),
+                    "vwap": data.get("vwap"),
+                    "volume": data.get("volume"),
+                    "change_percent": data.get("changePercent") or data.get("change_percent"),
+                }
+                break
+
+    return {"opinion": opinion, "reason": content, **price_data}

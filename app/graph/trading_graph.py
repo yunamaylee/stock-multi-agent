@@ -27,10 +27,10 @@ class AgentState(TypedDict):
     news_opinion: dict
     trader_opinion: dict
     final_opinion: dict
+    price_data: dict
 
 
 async def run_analysts_parallel(state: AgentState) -> AgentState:
-    # 5개 분석 에이전트 병렬 실행
     results = await asyncio.gather(
         float_agent.analyze(
             ticker=state["ticker"],
@@ -56,18 +56,29 @@ async def run_analysts_parallel(state: AgentState) -> AgentState:
         ),
     )
 
+    volume_opinion = results[1]
+    price_data = {
+        "close": volume_opinion.get("close"),
+        "open": volume_opinion.get("open"),
+        "high": volume_opinion.get("high"),
+        "low": volume_opinion.get("low"),
+        "vwap": volume_opinion.get("vwap"),
+        "volume": volume_opinion.get("volume"),
+        "change_percent": volume_opinion.get("change_percent"),
+    }
+
     return {
         **state,
         "float_opinion": results[0],
-        "volume_opinion": results[1],
+        "volume_opinion": volume_opinion,
         "short_opinion": results[2],
         "momentum_opinion": results[3],
         "news_opinion": results[4],
+        "price_data": price_data,
     }
 
 
 async def run_trader_agent(state: AgentState) -> AgentState:
-    # 트레이더 에이전트 실행 (초기 트레이딩 결정)
     opinion = await trader_agent.analyze(
         ticker=state["ticker"],
         target_date=state["target_date"],
@@ -81,22 +92,22 @@ async def run_trader_agent(state: AgentState) -> AgentState:
 
 
 async def run_risk_agent(state: AgentState) -> AgentState:
-    # 리스크 에이전트 실행 (트레이더 결정 검토)
     opinion = await risk_agent.analyze(
         ticker=state["ticker"],
         target_date=state["target_date"],
+        session=state["session"],
         float_opinion=state["float_opinion"],
         volume_opinion=state["volume_opinion"],
         short_opinion=state["short_opinion"],
         momentum_opinion=state["momentum_opinion"],
         news_opinion=state["news_opinion"],
         trader_opinion=state["trader_opinion"],
+        price_data=state.get("price_data"),
     )
     return {**state, "final_opinion": opinion}
 
 
 def build_graph() -> StateGraph:
-    # LangGraph 그래프 구성
     graph = StateGraph(AgentState)
 
     graph.add_node("analysts", run_analysts_parallel)
@@ -116,7 +127,6 @@ async def run_analysis(
     target_date: date,
     session: str = "regular",
 ) -> dict:
-    # 전체 분석 파이프라인 실행
     try:
         graph = build_graph()
 
@@ -131,6 +141,7 @@ async def run_analysis(
             "news_opinion": {},
             "trader_opinion": {},
             "final_opinion": {},
+            "price_data": {},
         }
 
         return await graph.ainvoke(initial_state)

@@ -120,6 +120,11 @@ def _build_response(
         date=target_date,
         decision=final_opinion.get("decision", "패스"),
         score=final_opinion.get("score", 0),
+        watch_condition=final_opinion.get("watch_condition"),
+        entry_strategy=final_opinion.get("entry_strategy"),
+        target=final_opinion.get("target"),
+        stop_loss=final_opinion.get("stop_loss"),
+        hold_days=final_opinion.get("hold_days"),
         agents={
             "float_agent": AgentOpinion(
                 opinion=final_state.get("float_opinion", {}).get("opinion", ""),
